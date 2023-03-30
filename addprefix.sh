@@ -11,12 +11,15 @@ fi
 match="$1"
 prefix="${2:-$match}"
 
-for file in *.pdf; do
-    if pdf2txt "$file" | grep -q "$match"; then
-        newname="${prefix}_$file"
-        mv "$file" "$newname"
-        echo "Renaming $file to $newname"
+# Use find to get a list of PDF files, and pass them to parallel
+find . -maxdepth 1 -name 'T*.pdf' -print0 |
+  parallel -0 -j "$(nproc)" "
+    if pdf2txt {} | grep -q '$match'; then
+        # Remove the "./" prefix from the file name
+        newname=\"${prefix}_\$(${SED-sed} -e 's#^\./##' <<< '{}')\"
+        mv {} \"\$newname\"
+        echo \"Renaming {} to '\$newname'\"
     else
-        echo "Skipping $file"
+        echo 'Skipping {}'
     fi
-done
+  "
